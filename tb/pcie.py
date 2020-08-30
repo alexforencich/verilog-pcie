@@ -642,9 +642,9 @@ class TLP(object):
                 self.register_number = (pkt[2] >> 2) >> 0x3ff
                 self.dest_id = PcieId.from_int(pkt[2] >> 16)
             elif self.fmt == FMT_3DW or self.fmt == FMT_3DW_DATA:
-                self.address = pkt[3] & 0xfffffffc
+                self.address = pkt[2] & 0xfffffffc
             elif self.fmt == FMT_4DW or self.fmt == FMT_4DW_DATA:
-                self.address = (pkt[4] & 0xffffffff) << 32 | pkt[4] & 0xfffffffc
+                self.address = (pkt[2] & 0xffffffff) << 32 | pkt[3] & 0xfffffffc
         elif (self.fmt_type == TLP_CPL or self.fmt_type == TLP_CPL_DATA or
                 self.fmt_type == TLP_CPL_LOCKED or self.fmt_type == TLP_CPL_LOCKED_DATA):
             self.byte_count = pkt[1] & 0xfff
