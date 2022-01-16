@@ -527,7 +527,7 @@ always @* begin
                 dma_read_block_run_next = 1'b0;
             end
         end else begin
-            if (!dma_read_desc_valid_reg || m_axis_dma_read_desc_ready) begin
+            if (!dma_read_desc_valid_reg && m_axis_dma_read_desc_ready) begin
                 dma_read_block_dma_offset_next = dma_read_block_dma_offset_reg + dma_read_block_dma_stride_reg;
                 dma_read_desc_dma_addr_next = dma_read_block_dma_base_addr_reg + (dma_read_block_dma_offset_reg & dma_read_block_dma_offset_mask_reg);
                 dma_read_block_ram_offset_next = dma_read_block_ram_offset_reg + dma_read_block_ram_stride_reg;
@@ -549,7 +549,7 @@ always @* begin
                 dma_write_block_run_next = 1'b0;
             end
         end else begin
-            if (!dma_write_desc_valid_reg || m_axis_dma_write_desc_ready) begin
+            if (!dma_write_desc_valid_reg && m_axis_dma_write_desc_ready) begin
                 dma_write_block_dma_offset_next = dma_write_block_dma_offset_reg + dma_write_block_dma_stride_reg;
                 dma_write_desc_dma_addr_next = dma_write_block_dma_base_addr_reg + (dma_write_block_dma_offset_reg & dma_write_block_dma_offset_mask_reg);
                 dma_write_block_ram_offset_next = dma_write_block_ram_offset_reg + dma_write_block_ram_stride_reg;
