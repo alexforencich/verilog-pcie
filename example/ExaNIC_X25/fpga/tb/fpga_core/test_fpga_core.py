@@ -313,7 +313,7 @@ async def run_test(dut):
     tb.log.info("Test DMA block operations")
 
     # write packet data
-    mem[0:1024] = bytearray([x % 256 for x in range(1024)])
+    mem[0:0x2000] = bytearray([x % 256 for x in range(0x2000)])
 
     # enable DMA
     await dev_pf0_bar0.write_dword(0x000000, 1)
@@ -322,13 +322,13 @@ async def run_test(dut):
 
     # configure operation (read)
     # DMA base address
-    await dev_pf0_bar0.write_dword(0x001080, (mem_base+0x0000) & 0xffffffff)
-    await dev_pf0_bar0.write_dword(0x001084, (mem_base+0x0000 >> 32) & 0xffffffff)
+    await dev_pf0_bar0.write_dword(0x001080, (mem_base + 0x0000) & 0xffffffff)
+    await dev_pf0_bar0.write_dword(0x001084, ((mem_base + 0x0000) >> 32) & 0xffffffff)
     # DMA offset address
     await dev_pf0_bar0.write_dword(0x001088, 0)
     await dev_pf0_bar0.write_dword(0x00108c, 0)
     # DMA offset mask
-    await dev_pf0_bar0.write_dword(0x001090, 0x000003ff)
+    await dev_pf0_bar0.write_dword(0x001090, 0x00001fff)
     await dev_pf0_bar0.write_dword(0x001094, 0)
     # DMA stride
     await dev_pf0_bar0.write_dword(0x001098, 256)
@@ -340,10 +340,10 @@ async def run_test(dut):
     await dev_pf0_bar0.write_dword(0x0010c8, 0)
     await dev_pf0_bar0.write_dword(0x0010cc, 0)
     # RAM offset mask
-    await dev_pf0_bar0.write_dword(0x0010d0, 0x000003ff)
+    await dev_pf0_bar0.write_dword(0x0010d0, 0x00001fff)
     await dev_pf0_bar0.write_dword(0x0010d4, 0)
     # RAM stride
-    await dev_pf0_bar0.write_dword(0x0010d8, 256)
+    await dev_pf0_bar0.write_dword(0x0010d8, 256)  # 256
     await dev_pf0_bar0.write_dword(0x0010dc, 0)
     # clear cycle count
     await dev_pf0_bar0.write_dword(0x001008, 0)
@@ -360,13 +360,13 @@ async def run_test(dut):
 
     # configure operation (write)
     # DMA base address
-    await dev_pf0_bar0.write_dword(0x001180, (mem_base+0x0000) & 0xffffffff)
-    await dev_pf0_bar0.write_dword(0x001184, (mem_base+0x0000 >> 32) & 0xffffffff)
+    await dev_pf0_bar0.write_dword(0x001180, (mem_base + 0x8000 & 0xffffffff))
+    await dev_pf0_bar0.write_dword(0x001184, ((mem_base + 0x8000) >> 32) & 0xffffffff)
     # DMA offset address
     await dev_pf0_bar0.write_dword(0x001188, 0)
     await dev_pf0_bar0.write_dword(0x00118c, 0)
     # DMA offset mask
-    await dev_pf0_bar0.write_dword(0x001190, 0x000003ff)
+    await dev_pf0_bar0.write_dword(0x001190, 0x00001fff)
     await dev_pf0_bar0.write_dword(0x001194, 0)
     # DMA stride
     await dev_pf0_bar0.write_dword(0x001198, 256)
@@ -378,7 +378,7 @@ async def run_test(dut):
     await dev_pf0_bar0.write_dword(0x0011c8, 0)
     await dev_pf0_bar0.write_dword(0x0011cc, 0)
     # RAM offset mask
-    await dev_pf0_bar0.write_dword(0x0011d0, 0x000003ff)
+    await dev_pf0_bar0.write_dword(0x0011d0, 0x00001fff)
     await dev_pf0_bar0.write_dword(0x0011d4, 0)
     # RAM stride
     await dev_pf0_bar0.write_dword(0x0011d8, 256)
@@ -393,6 +393,12 @@ async def run_test(dut):
     await dev_pf0_bar0.write_dword(0x00111c, 0)
     # start
     await dev_pf0_bar0.write_dword(0x001100, 1)
+
+    await Timer(20000, 'ns')
+
+    tb.log.info("%s", mem.hexdump_str(0x8000, 0x2000))
+
+    assert mem[0:0x2000] == mem[0x8000:0x8000 + 0x2000]
 
     await Timer(2000, 'ns')
 
