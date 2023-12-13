@@ -33,6 +33,11 @@ THE SOFTWARE.
  */
 module fpga (
     /*
+     * Clock and reset
+     */
+    output wire       user_sma_clk_p,
+    output wire       user_sma_clk_n,
+    /*
      * GPIO
      */
     input  wire       btnu,
@@ -77,6 +82,14 @@ parameter BAR4_APERTURE = 16;
 // Clock and reset
 wire pcie_user_clk;
 wire pcie_user_reset;
+
+// forward PCIe user clock out SMA connectors
+OBUFDS
+user_sma_clk_obufds_inst (
+    .I(pcie_user_clk),
+    .O(user_sma_clk_p),
+    .OB(user_sma_clk_n)
+);
 
 // GPIO
 wire btnu_int;
