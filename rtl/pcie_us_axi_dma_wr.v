@@ -155,7 +155,12 @@ module pcie_us_axi_dma_wr #
     input  wire                               enable,
     input  wire [15:0]                        requester_id,
     input  wire                               requester_id_enable,
-    input  wire [2:0]                         max_payload_size
+    input  wire [2:0]                         max_payload_size,
+
+    /*
+     * Status
+     */
+    output wire                               status_busy
 );
 
 parameter AXI_WORD_WIDTH = AXI_STRB_WIDTH;
@@ -335,6 +340,10 @@ reg [RQ_SEQ_NUM_WIDTH-1:0] active_tx_count_reg = {RQ_SEQ_NUM_WIDTH{1'b0}};
 reg active_tx_count_av_reg = 1'b1;
 reg inc_active_tx;
 
+reg [OP_TAG_WIDTH+1-1:0] active_op_count_reg = 0;
+reg inc_active_op;
+reg dec_active_op;
+
 reg s_axis_rq_tready_reg = 1'b0, s_axis_rq_tready_next;
 
 reg s_axis_write_desc_ready_reg = 1'b0, s_axis_write_desc_ready_next;
@@ -351,6 +360,8 @@ reg m_axi_rready_reg = 1'b0, m_axi_rready_next;
 reg [AXI_DATA_WIDTH-1:0] save_axi_rdata_reg = {AXI_DATA_WIDTH{1'b0}};
 
 wire [AXI_DATA_WIDTH-1:0] shift_axi_rdata = {m_axi_rdata, save_axi_rdata_reg} >> ((AXI_STRB_WIDTH-offset_reg)*AXI_WORD_SIZE);
+
+reg status_busy_reg = 1'b0;
 
 // internal datapath
 reg  [AXIS_PCIE_DATA_WIDTH-1:0]    m_axis_rq_tdata_int;
@@ -387,6 +398,8 @@ assign m_axi_arcache = 4'b0011;
 assign m_axi_arprot = 3'b010;
 assign m_axi_arvalid = m_axi_arvalid_reg;
 assign m_axi_rready = m_axi_rready_reg;
+
+assign status_busy = status_busy_reg;
 
 // operation tag management
 reg [OP_TAG_WIDTH+1-1:0] op_table_start_ptr_reg = 0;
@@ -570,6 +583,8 @@ always @* begin
     op_table_start_last = last_tlp;
     op_table_start_en = 1'b0;
 
+    inc_active_op = 1'b0;
+
     // TLP segmentation and AXI read request generation
     case (axi_state_reg)
         AXI_STATE_IDLE: begin
@@ -626,6 +641,7 @@ always @* begin
                 tlp_cmd_last_next = last_tlp;
 
                 op_table_start_en = 1'b1;
+                inc_active_op = 1'b1;
 
                 axi_state_next = AXI_STATE_REQ;
             end else begin
@@ -693,6 +709,7 @@ always @* begin
     op_table_tx_finish_en = 1'b0;
 
     inc_active_tx = 1'b0;
+    dec_active_op = 1'b0;
 
     // TLP header and sideband data
     tlp_header_data[1:0] = 2'b0; // address type
@@ -1066,6 +1083,7 @@ always @* begin
 
     if (op_table_active[op_table_finish_ptr_reg[OP_TAG_WIDTH-1:0]] && (!RQ_SEQ_NUM_ENABLE || op_table_tx_done[op_table_finish_ptr_reg[OP_TAG_WIDTH-1:0]]) && op_table_finish_ptr_reg != op_table_tx_finish_ptr_reg) begin
         op_table_finish_en = 1'b1;
+        dec_active_op = 1'b1;
 
         if (op_table_last[op_table_finish_ptr_reg[OP_TAG_WIDTH-1:0]]) begin
             m_axis_write_desc_status_valid_next = 1'b1;
@@ -1095,6 +1113,8 @@ always @(posedge clk) begin
     bubble_cycle_reg <= bubble_cycle_next;
     last_cycle_reg <= last_cycle_next;
     rresp_reg <= rresp_next;
+
+    status_busy_reg <= active_op_count_reg != 0 || active_tx_count_reg != 0;
 
     tlp_cmd_tag_reg <= tlp_cmd_tag_next;
     tlp_cmd_last_reg <= tlp_cmd_last_next;
@@ -1131,6 +1151,8 @@ always @(posedge clk) begin
     end else begin
         active_tx_count_av_reg <= active_tx_count_reg < TX_LIMIT;
     end
+
+    active_op_count_reg <= active_op_count_reg + inc_active_op - dec_active_op;
 
     if (op_table_start_en) begin
         op_table_start_ptr_reg <= op_table_start_ptr_reg + 1;
@@ -1188,6 +1210,8 @@ always @(posedge clk) begin
 
         active_tx_count_reg <= {RQ_SEQ_NUM_WIDTH{1'b0}};
         active_tx_count_av_reg <= 1'b1;
+
+        active_op_count_reg <= 0;
 
         op_table_start_ptr_reg <= 0;
         op_table_tx_start_ptr_reg <= 0;

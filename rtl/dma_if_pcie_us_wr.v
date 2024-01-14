@@ -149,7 +149,12 @@ module dma_if_pcie_us_wr #
     input  wire                                 enable,
     input  wire [15:0]                          requester_id,
     input  wire                                 requester_id_enable,
-    input  wire [2:0]                           max_payload_size
+    input  wire [2:0]                           max_payload_size,
+
+    /*
+     * Status
+     */
+    output wire                                 status_busy
 );
 
 parameter RAM_WORD_WIDTH = SEG_BE_WIDTH;
@@ -369,6 +374,10 @@ reg [RQ_SEQ_NUM_WIDTH-1:0] active_tx_count_reg = {RQ_SEQ_NUM_WIDTH{1'b0}};
 reg active_tx_count_av_reg = 1'b1;
 reg inc_active_tx;
 
+reg [OP_TAG_WIDTH+1-1:0] active_op_count_reg = 0;
+reg inc_active_op;
+reg dec_active_op;
+
 reg s_axis_rq_tready_reg = 1'b0, s_axis_rq_tready_next;
 
 reg s_axis_write_desc_ready_reg = 1'b0, s_axis_write_desc_ready_next;
@@ -380,6 +389,8 @@ reg [SEG_COUNT*RAM_SEL_WIDTH-1:0] ram_rd_cmd_sel_reg = 0, ram_rd_cmd_sel_next;
 reg [SEG_COUNT*SEG_ADDR_WIDTH-1:0] ram_rd_cmd_addr_reg = 0, ram_rd_cmd_addr_next;
 reg [SEG_COUNT-1:0] ram_rd_cmd_valid_reg = 0, ram_rd_cmd_valid_next;
 reg [SEG_COUNT-1:0] ram_rd_resp_ready_cmb;
+
+reg status_busy_reg = 1'b0;
 
 // internal datapath
 reg  [AXIS_PCIE_DATA_WIDTH-1:0]    m_axis_rq_tdata_int;
@@ -409,6 +420,8 @@ assign ram_rd_cmd_sel = ram_rd_cmd_sel_reg;
 assign ram_rd_cmd_addr = ram_rd_cmd_addr_reg;
 assign ram_rd_cmd_valid = ram_rd_cmd_valid_reg;
 assign ram_rd_resp_ready = ram_rd_resp_ready_cmb;
+
+assign status_busy = status_busy_reg;
 
 // operation tag management
 reg [OP_TAG_WIDTH+1-1:0] op_table_start_ptr_reg = 0;
@@ -498,6 +511,8 @@ always @* begin
     op_table_start_last = op_count_reg == tlp_count_reg;
     op_table_start_en = 1'b0;
 
+    inc_active_op = 1'b0;
+
     // TLP segmentation
     case (req_state_reg)
         REQ_STATE_IDLE: begin
@@ -578,6 +593,7 @@ always @* begin
 
                 op_table_start_tag = tag_reg;
                 op_table_start_en = 1'b1;
+                inc_active_op = 1'b1;
 
                 // TLP size computation
                 if (op_count_next <= {max_payload_size_dw_reg, 2'b00}-pcie_addr_next[1:0]) begin
@@ -805,6 +821,7 @@ always @* begin
     op_table_tx_finish_en = 1'b0;
 
     inc_active_tx = 1'b0;
+    dec_active_op = 1'b0;
 
     s_axis_rq_tready_next = 1'b0;
 
@@ -1174,6 +1191,7 @@ always @* begin
 
     if (op_table_active[op_table_finish_ptr_reg[OP_TAG_WIDTH-1:0]] && (!RQ_SEQ_NUM_ENABLE || op_table_tx_done[op_table_finish_ptr_reg[OP_TAG_WIDTH-1:0]]) && op_table_finish_ptr_reg != op_table_tx_finish_ptr_reg) begin
         op_table_finish_en = 1'b1;
+        dec_active_op = 1'b1;
 
         if (op_table_last[op_table_finish_ptr_reg[OP_TAG_WIDTH-1:0]]) begin
             m_axis_write_desc_status_valid_next = 1'b1;
@@ -1228,6 +1246,8 @@ always @(posedge clk) begin
     read_cmd_last_cycle_reg <= read_cmd_last_cycle_next;
     read_cmd_valid_reg <= read_cmd_valid_next;
 
+    status_busy_reg <= active_op_count_reg != 0 || active_tx_count_reg != 0;
+
     tlp_header_data_reg <= tlp_header_data_next;
     tlp_header_valid_reg <= tlp_header_valid_next;
     tlp_payload_data_reg <= tlp_payload_data_next;
@@ -1268,6 +1288,8 @@ always @(posedge clk) begin
     end else begin
         active_tx_count_av_reg <= active_tx_count_reg < TX_LIMIT;
     end
+
+    active_op_count_reg <= active_op_count_reg + inc_active_op - dec_active_op;
 
     if (mask_fifo_we) begin
         mask_fifo_mask[mask_fifo_wr_ptr_reg[MASK_FIFO_ADDR_WIDTH-1:0]] <= mask_fifo_wr_mask;
@@ -1330,6 +1352,8 @@ always @(posedge clk) begin
 
         active_tx_count_reg <= {RQ_SEQ_NUM_WIDTH{1'b0}};
         active_tx_count_av_reg <= 1'b1;
+
+        active_op_count_reg <= 0;
 
         mask_fifo_wr_ptr_reg <= 0;
         mask_fifo_rd_ptr_reg <= 0;

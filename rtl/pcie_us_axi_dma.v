@@ -202,6 +202,8 @@ module pcie_us_axi_dma #
     /*
      * Status
      */
+    output wire                               status_rd_busy,
+    output wire                               status_wr_busy,
     output wire                               status_error_cor,
     output wire                               status_error_uncor
 );
@@ -327,6 +329,7 @@ pcie_us_axi_dma_rd_inst (
     /*
      * Status
      */
+    .status_busy(status_rd_busy),
     .status_error_cor(status_error_cor),
     .status_error_uncor(status_error_uncor)
 );
@@ -438,7 +441,12 @@ pcie_us_axi_dma_wr_inst (
     .enable(write_enable),
     .requester_id(requester_id),
     .requester_id_enable(requester_id_enable),
-    .max_payload_size(max_payload_size)
+    .max_payload_size(max_payload_size),
+
+    /*
+     * Status
+     */
+    .status_busy(status_wr_busy)
 );
 
 endmodule

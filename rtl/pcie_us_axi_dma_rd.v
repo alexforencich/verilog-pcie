@@ -159,6 +159,7 @@ module pcie_us_axi_dma_rd #
     /*
      * Status
      */
+    output wire                               status_busy,
     output wire                               status_error_cor,
     output wire                               status_error_uncor
 );
@@ -424,6 +425,14 @@ reg [RQ_SEQ_NUM_WIDTH-1:0] active_tx_count_reg = {RQ_SEQ_NUM_WIDTH{1'b0}};
 reg active_tx_count_av_reg = 1'b1;
 reg inc_active_tx;
 
+reg [PCIE_TAG_WIDTH+1-1:0] active_tag_count_reg = 0;
+reg inc_active_tag;
+reg dec_active_tag;
+
+reg [OP_TAG_WIDTH+1-1:0] active_op_count_reg = 0;
+reg inc_active_op;
+reg dec_active_op;
+
 reg s_axis_rc_tready_reg = 1'b0, s_axis_rc_tready_next;
 reg s_axis_read_desc_ready_reg = 1'b0, s_axis_read_desc_ready_next;
 
@@ -436,6 +445,7 @@ reg [7:0] m_axi_awlen_reg = 8'd0, m_axi_awlen_next;
 reg m_axi_awvalid_reg = 1'b0, m_axi_awvalid_next;
 reg m_axi_bready_reg = 1'b0, m_axi_bready_next;
 
+reg status_busy_reg = 1'b0;
 reg status_error_cor_reg = 1'b0, status_error_cor_next;
 reg status_error_uncor_reg = 1'b0, status_error_uncor_next;
 
@@ -477,6 +487,7 @@ assign m_axi_awprot = 3'b010;
 assign m_axi_awvalid = m_axi_awvalid_reg;
 assign m_axi_bready = m_axi_bready_reg;
 
+assign status_busy = status_busy_reg;
 assign status_error_cor = status_error_cor_reg;
 assign status_error_uncor = status_error_uncor_reg;
 
@@ -594,6 +605,8 @@ always @* begin
     req_pcie_tag_valid_next = req_pcie_tag_valid_reg;
 
     inc_active_tx = 1'b0;
+    inc_active_tag = 1'b0;
+    inc_active_op = 1'b0;
 
     op_table_start_ptr = req_op_tag_reg;
     op_table_start_tag = s_axis_read_desc_tag;
@@ -743,6 +756,7 @@ always @* begin
                 op_table_start_ptr = req_op_tag_reg;
                 op_table_start_tag = s_axis_read_desc_tag;
                 op_table_start_en = 1'b1;
+                inc_active_op = 1'b1;
                 req_state_next = REQ_STATE_START;
             end else begin
                 req_state_next = REQ_STATE_IDLE;
@@ -765,6 +779,7 @@ always @* begin
                     pcie_tag_table_start_op_tag_next = req_op_tag_reg;
                     pcie_tag_table_start_zero_len_next = req_zero_len_reg;
                     pcie_tag_table_start_en_next = 1'b1;
+                    inc_active_tag = 1'b1;
 
                     op_table_read_start_ptr = req_op_tag_reg;
                     op_table_read_start_commit = req_last_tlp;
@@ -804,6 +819,7 @@ always @* begin
                     pcie_tag_table_start_op_tag_next = req_op_tag_reg;
                     pcie_tag_table_start_zero_len_next = req_zero_len_reg;
                     pcie_tag_table_start_en_next = 1'b1;
+                    inc_active_tag = 1'b1;
 
                     op_table_read_start_ptr = req_op_tag_reg;
                     op_table_read_start_commit = req_last_tlp;
@@ -895,6 +911,9 @@ always @* begin
     status_fifo_finish_next = 1'b0;
     status_fifo_error_next = DMA_ERROR_NONE;
     status_fifo_we_next = 1'b0;
+
+    dec_active_tag = 1'b0;
+    dec_active_op = 1'b0;
 
     status_error_cor_next = 1'b0;
     status_error_uncor_next = 1'b0;
@@ -1387,6 +1406,7 @@ always @* begin
     end else if (finish_tag_reg) begin
         pcie_tag_table_finish_ptr = pcie_tag_reg;
         pcie_tag_table_finish_en = 1'b1;
+        dec_active_tag = 1'b1;
 
         pcie_tag_fifo_wr_tag = pcie_tag_reg;
         if (pcie_tag_fifo_wr_tag < PCIE_TAG_COUNT_1 || !PCIE_TAG_COUNT_2) begin
@@ -1468,6 +1488,7 @@ always @* begin
 
             if (op_table_read_commit[op_table_read_finish_ptr] && (op_table_read_count_start[op_table_read_finish_ptr] == op_table_read_count_finish[op_table_read_finish_ptr])) begin
                 op_tag_fifo_we = 1'b1;
+                dec_active_op = 1'b1;
                 m_axis_read_desc_status_valid_next = 1'b1;
             end
         end
@@ -1496,6 +1517,7 @@ always @(posedge clk) begin
         init_op_tag_reg <= init_count_reg + 1 < 2**OP_TAG_WIDTH;
     end
 
+    status_busy_reg <= active_op_count_reg != 0 || active_tx_count_reg != 0;
     status_error_cor_reg <= status_error_cor_next;
     status_error_uncor_reg <= status_error_uncor_next;
 
@@ -1586,6 +1608,9 @@ always @(posedge clk) begin
     end else begin
         active_tx_count_av_reg <= active_tx_count_reg < TX_LIMIT;
     end
+
+    active_tag_count_reg <= active_tag_count_reg + inc_active_tag - dec_active_tag;
+    active_op_count_reg <= active_op_count_reg + inc_active_op - dec_active_op;
 
     if (transfer_in_save) begin
         save_axis_tdata_reg <= s_axis_rc_tdata;
@@ -1698,6 +1723,9 @@ always @(posedge clk) begin
         active_tx_count_reg <= {RQ_SEQ_NUM_WIDTH{1'b0}};
         active_tx_count_av_reg <= 1'b1;
 
+        active_tag_count_reg <= 0;
+        active_op_count_reg <= 0;
+
         pcie_tag_table_start_en_reg <= 1'b0;
 
         pcie_tag_fifo_1_wr_ptr_reg <= 0;
@@ -1708,6 +1736,7 @@ always @(posedge clk) begin
         op_tag_fifo_wr_ptr_reg <= 0;
         op_tag_fifo_rd_ptr_reg <= 0;
 
+        status_busy_reg <= 1'b0;
         status_error_cor_reg <= 1'b0;
         status_error_uncor_reg <= 1'b0;
     end
