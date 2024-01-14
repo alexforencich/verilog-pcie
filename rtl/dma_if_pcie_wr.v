@@ -479,8 +479,8 @@ always @* begin
     stat_wr_req_start_len_next = stat_wr_req_start_len_reg;
     stat_wr_req_start_valid_next = 1'b0;
     stat_wr_op_table_full_next = !(!op_table_active[op_table_start_ptr_reg[OP_TAG_WIDTH-1:0]] && ($unsigned(op_table_start_ptr_reg - op_table_finish_ptr_reg) < 2**OP_TAG_WIDTH));
-    stat_wr_tx_limit_next = !(!TX_SEQ_NUM_ENABLE || active_tx_count_av_reg);
-    stat_wr_tx_stall_next = !(!tx_wr_req_tlp_valid_reg || tx_wr_req_tlp_ready);
+    stat_wr_tx_limit_next = (TX_SEQ_NUM_ENABLE && !active_tx_count_av_reg);
+    stat_wr_tx_stall_next = tx_wr_req_tlp_valid_reg && !tx_wr_req_tlp_ready;
 
     pcie_addr_next = pcie_addr_reg;
     ram_sel_next = ram_sel_reg;
