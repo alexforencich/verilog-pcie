@@ -632,7 +632,7 @@ always @* begin
     stat_rd_req_start_valid_next = 1'b0;
     stat_rd_op_table_full_next = op_tag_fifo_rd_ptr_reg == op_tag_fifo_wr_ptr_reg;
     stat_rd_no_tags_next = !req_pcie_tag_valid_reg;
-    stat_rd_tx_limit_next = (TX_SEQ_NUM_ENABLE && !active_tx_count_av_reg);
+    stat_rd_tx_limit_next = (TX_SEQ_NUM_ENABLE && !active_tx_count_av_reg) || !active_cplh_fc_av_reg || !active_cpld_fc_av_reg;
     stat_rd_tx_stall_next = tx_rd_req_tlp_valid_reg && !tx_rd_req_tlp_ready;
 
     req_pcie_addr_next = req_pcie_addr_reg;
