@@ -80,6 +80,8 @@ reg cfg_mgmt_write_reg = 1'b0, cfg_mgmt_write_next;
 reg [31:0] cfg_mgmt_write_data_reg = 32'd0, cfg_mgmt_write_data_next;
 reg [3:0] cfg_mgmt_byte_enable_reg = 4'd0, cfg_mgmt_byte_enable_next;
 reg cfg_mgmt_read_reg = 1'b0, cfg_mgmt_read_next;
+reg [31:0] cfg_mgmt_read_data_reg = 32'd0;
+reg cfg_mgmt_read_write_done_reg = 1'b0;
 
 reg [7:0] delay_reg = 8'hff, delay_next;
 reg [7:0] func_cnt_reg = 8'd0, func_cnt_next;
@@ -115,12 +117,12 @@ always @* begin
     end else begin
         cfg_mgmt_addr_next = DEV_CTRL_OFFSET >> 2;
         cfg_mgmt_read_next = 1'b1;
-        if (cfg_mgmt_read_write_done) begin
+        if (cfg_mgmt_read_write_done_reg) begin
             cfg_mgmt_read_next = 1'b0;
             
-            ext_tag_enable_next[func_cnt_reg] = cfg_mgmt_read_data[8];
-            max_read_request_size_next[func_cnt_reg*3 +: 3] = cfg_mgmt_read_data[14:12];
-            max_payload_size_next[func_cnt_reg*3 +: 3] = cfg_mgmt_read_data[7:5];
+            ext_tag_enable_next[func_cnt_reg] = cfg_mgmt_read_data_reg[8];
+            max_read_request_size_next[func_cnt_reg*3 +: 3] = cfg_mgmt_read_data_reg[14:12];
+            max_payload_size_next[func_cnt_reg*3 +: 3] = cfg_mgmt_read_data_reg[7:5];
 
             if (func_cnt_reg == F_COUNT-1) begin
                 func_cnt_next = 0;
@@ -139,6 +141,22 @@ always @* begin
 end
 
 always @(posedge clk) begin
+    ext_tag_enable_reg <= ext_tag_enable_next;
+    max_read_request_size_reg <= max_read_request_size_next;
+    max_payload_size_reg <= max_payload_size_next;
+
+    cfg_mgmt_addr_reg <= cfg_mgmt_addr_next;
+    cfg_mgmt_function_number_reg <= cfg_mgmt_function_number_next;
+    cfg_mgmt_write_reg <= cfg_mgmt_write_next;
+    cfg_mgmt_write_data_reg <= cfg_mgmt_write_data_next;
+    cfg_mgmt_byte_enable_reg <= cfg_mgmt_byte_enable_next;
+    cfg_mgmt_read_reg <= cfg_mgmt_read_next;
+    cfg_mgmt_read_data_reg <= cfg_mgmt_read_data;
+    cfg_mgmt_read_write_done_reg <= cfg_mgmt_read_write_done;
+
+    delay_reg <= delay_next;
+    func_cnt_reg <= func_cnt_next;
+
     if (rst) begin
         ext_tag_enable_reg <= {F_COUNT{1'b0}};
         max_read_request_size_reg <= {F_COUNT{3'd0}};
@@ -148,26 +166,11 @@ always @(posedge clk) begin
         cfg_mgmt_function_number_reg <= 8'd0;
         cfg_mgmt_write_reg <= 1'b0;
         cfg_mgmt_read_reg <= 1'b0;
+        cfg_mgmt_read_write_done_reg <= 1'b0;
 
         delay_reg <= 8'hff;
         func_cnt_reg <= 8'd0;
-    end else begin
-        ext_tag_enable_reg <= ext_tag_enable_next;
-        max_read_request_size_reg <= max_read_request_size_next;
-        max_payload_size_reg <= max_payload_size_next;
-
-        cfg_mgmt_addr_reg <= cfg_mgmt_addr_next;
-        cfg_mgmt_function_number_reg <= cfg_mgmt_function_number_next;
-        cfg_mgmt_write_reg <= cfg_mgmt_write_next;
-        cfg_mgmt_read_reg <= cfg_mgmt_read_next;
-
-        delay_reg <= delay_next;
-        func_cnt_reg <= func_cnt_next;
     end
-    
-    cfg_mgmt_write_data_reg <= cfg_mgmt_write_data_next;
-    cfg_mgmt_byte_enable_reg <= cfg_mgmt_byte_enable_next;
-
 end
 
 endmodule
