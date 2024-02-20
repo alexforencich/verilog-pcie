@@ -70,7 +70,7 @@ endif
 include $(shell cocotb-config --makefiles)/Makefile.sim
 
 $(WRAPPER).v: ../../rtl/$(DUT)_wrap.py
-	$< -p $(PORTS)
+	python3 $< -p $(PORTS)
 
 iverilog_dump.v:
 	echo 'module iverilog_dump();' > $@
