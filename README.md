@@ -21,6 +21,7 @@ Example designs are included for the following FPGA boards:
 *  Intel Stratix 10 MX dev kit (Intel Stratix 10 MX 1SM21CHU1F53E1VG)
 *  Terasic DE10-Agilex (Intel Agilex F AGFB014R24B2E2V)
 *  Xilinx Alveo U50 (Xilinx Virtex UltraScale+ XCU50)
+*  Xilinx Alveo U55N/Varium C1100 (Xilinx Virtex UltraScale+ XCU55N)
 *  Xilinx Alveo U200 (Xilinx Virtex UltraScale+ XCU200)
 *  Xilinx Alveo U250 (Xilinx Virtex UltraScale+ XCU250)
 *  Xilinx Alveo U280 (Xilinx Virtex UltraScale+ XCU280)
