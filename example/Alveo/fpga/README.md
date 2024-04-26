@@ -8,6 +8,7 @@ The design implements the PCIe AXI lite master module, the PCIe AXI master modul
 
 * FPGA
   * AU50: xcu50-fsvh2104-2-e
+  * AU55C: xcu55c-fsvh2892-2L-e
   * AU55N/C1100: xcu55n-fsvh2892-2L-e
   * AU200: xcu200-fsgd2104-2-e
   * AU250: xcu250-fsgd2104-2-e
