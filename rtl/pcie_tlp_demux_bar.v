@@ -127,7 +127,7 @@ integer i, j;
 // check configuration
 initial begin
     for (i = 0; i < PORTS; i = i + 1) begin
-        if (BAR_IDS_INT[i*3 +: 3] > 5) begin
+        if (BAR_IDS_INT[i*3 +: 3] > 6) begin
             $error("Error: BAR out of range (instance %m)");
             $finish;
         end
