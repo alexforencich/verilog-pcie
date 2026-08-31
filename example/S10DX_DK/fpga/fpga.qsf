@@ -95,6 +95,7 @@ set_instance_assignment -name IO_STANDARD "1.8 V" -to user_led_g[0]
 set_instance_assignment -name IO_STANDARD "1.8 V" -to user_led_g[1]
 set_instance_assignment -name IO_STANDARD "1.8 V" -to user_led_g[2]
 set_instance_assignment -name IO_STANDARD "1.8 V" -to user_led_g[3]
+set_instance_assignment -name SLEW_RATE 0 -to user_led_g[*]
 
 # I2C
 set_location_assignment PIN_N36  -to bmc_i2c2_disable

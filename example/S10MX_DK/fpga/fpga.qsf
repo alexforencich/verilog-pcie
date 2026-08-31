@@ -78,6 +78,7 @@ set_instance_assignment -name IO_STANDARD LVDS -to "clk_ddr4_dimm_p"
 
 # Switches, buttons, LEDs
 set_location_assignment PIN_BL14 -to "cpu_resetn"
+set_instance_assignment -name IO_STANDARD "1.8 V" -to "cpu_resetn"
 
 set_location_assignment PIN_BH11 -to "user_led[3]"
 set_location_assignment PIN_BG11 -to "user_led[2]"
@@ -85,6 +86,7 @@ set_location_assignment PIN_BF12 -to "user_led[1]"
 set_location_assignment PIN_BG12 -to "user_led[0]"
 
 set_instance_assignment -name IO_STANDARD "1.8 V" -to "user_led[*]"
+set_instance_assignment -name SLEW_RATE 0 -to user_led[*]
 
 # I2C
 set_location_assignment PIN_BE14 -to "main_i2c_scl"
